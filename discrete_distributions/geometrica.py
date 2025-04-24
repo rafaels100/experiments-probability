@@ -49,6 +49,9 @@ Por lo tanto tomo la decision de ignorar ese evento, pues mi variable aleatoria 
 me quedo con todos los eventos en donde al menos hubo un exito.
 Asi, 
 rg_Y = {0, 1, ... , n - 1}
+
+Asi, la variable aleaoria solo mapea enventos que tengan >= 1 exito.
+Esto de dejar eventos en mi espacio muestral sin mapear no es un problema, siempre y cuando sepa que lo estoy haciendo.
 """
 
 #asi, Y cuenta la cantidad de fracasos antes de mi primer exito. Esta variable aleatoria sigue una distribucion GEOMETRICA, esto es, 
