@@ -89,20 +89,20 @@ f_T(t) = lambda * math.e ** (-lambda * t)
 
 #el experimento consiste en contar la cantidad de clientes que atiende la caja de un supermercado.
 #Por experiencia, sabemos que en promedio llegan 5 clientes por hora a la caja
-lambd = 5 #clientes/hora
 #voy a cortar al tiempo total en intervalos de 1 segundo. 
-t = 1 #h
+t = 1 #hora, la duracion de la presentacion de woz
 #Sabiendo que hay 60 minutos en una hora, y que hay 60 segundos en cada minuto, la longitud T de los intervalos sera
 T = t/(60*60)
 #esto genera periodos de
-n = int(t / T)
-print(n)#es decir, 3600 segundos, 3600 bins/intervalos/sets para correr un experimento de bernoulli
+n = int(t / T)#60*60 = 3600 segundos, 3600 bins/intervalos/sets para correr un experimento de bernoulli
+#print(n)
 
 #La teoria de probabilidad del proceso de poisson nos dice que la proba de un exito en alguno de estos intervalos viene dada por 
 #la multiplicacion de la proba promedio de que ocurra el exito en el tiempo t total, por la longitud del intervalo que estoy considerando
-p_e = lambd * T
+lambd = 12 / 3600 #clintes por segundo
+p_e = lambd
 #y la probabilidad de fracaso en cada uno es de 
-p_f = 1 - lambd * T
+p_f = 1 - lambd
 
 #si fuera a correr ahora el tiempo, y ver que sucede en una hora de observar a la gente llegar al supermercado
 #y, segundo a segundo, anotar un exito o un fracaso segun el experimento de Bernoulli
@@ -113,86 +113,48 @@ def bernoulli(p):
 N = 1000
 res = [[bernoulli(p_e) for _ in range(n)] for _ in range(N)]
 
-
-#defino la variable aleatoria
-#X: Omega -> R 
-#     w  |-> cantidad de bolitas blancas extraidas
-def X(w):
-    return sum(w)
+#defino la variable aleatoria W: omega -> R
+#
+def W(w):
+    #el tiempo hasta que ocurra el primer error, en segundos, es
+    t = 0
+    while t < len(w) and w[t] != 1:
+        t += 1
+    return t
     
-#asi, X cuenta la cantidad de exitos totales en mi experimento. Esta variable aleatoria sigue una distribucion BINOMIAL, esto es, 
-#podemos calcular la probabilidad de que ocurra el evento {w pert(Omega) : X(w) = x} usando una formula conocida
-#dicha formula es
-def bin(n, k, p):
-    return math.comb(n, k) * (p)**k * (1 - p) ** (n-k)
+#Esta VA sigue una distribucion exponencial, pues modela el tiempo entre eventos en un proceso de poisson
+def F_expo(lambd, t):
+    """
+    La funcion exponencial deberia ser el equivalente a la geometrica, que solo toma un parametro p, y nos deja libre tanto el k-esimo exito
+    (y eso a su vez setea los n intentos (que van a ser k)) para darnos la probabilidad de que el primer exito ocurra en la k-esima tirada
+    VA A ESTAR LLENO DE FRACASOS, EXCEPTO POR EL ULTIMO EXITO, los eventos que caigan en P(X = k) si X - Geom(p). Van a ser todo 0 menos el 
+    ultimo, que sera 1.
     
-#tambien podemos aproximar a esta binomial con una poisson de parametro p = lambda * t
-def poi(n, k, lambd, t):
-    return ((lambd * t) ** k * math.e ** (-lambd * t)) / math.factorial(k)
+    En la exponencial no podemos pensar que el exito llega justo en el instante deseado. En vez de eso, capturamos todos los eventos que cumplen
+    una condicion de <= t deseado. Todos los eventos cuyo primer exito vino antes del tiempo t. No importa si hubo mas de un exito en ese tiempo,
+    la variable que me interesa solo me devuelve el tiempo hasta el primer exito. Ese es el tiempo que esta en el 'espacion muestral' W, y 
+    el tiempo que me interesa chequear. Tengo que pensar que extraigo esos tiempos del experimento original, y ese es mi nuevo espacio muestral.
+    """
+    return 1 - math.exp(-lambd * t)
 
-#compruebo
-#si quiero todos los w tal que {X = 1}, es decir, {w pert(Omega) : X(w) = 1}
-X_1 = [w for w in res if X(w) == 1] #estos son todos los eventos en los que solo obtuve un exito en mis 5 tiradas
-print("El evento {X=1} es:")
-print(X_1)
-print("La proba estadistica de obtener un exito es de:")
-print(len(X_1) / N)
-print("La proba teorica es:")
-print(bin(n, 1, p_e))
+#puedo hacerla 'a mano
+def F_W(t):
+    #me da la probabilidad de observar el primer exito despues del segundo t
+    if t >= 3600:
+        #si me paso no existe
+        return -1
+    res_0_t = [w for w in res if sum(w[:t]) > 0] #me quedo con los eventos donde tuve mas de un exito antes del tiempo t
+    #NOTA: No me importa si tuve mas de un exito en los w de res, ya que ese espacio muestral es de la V.A. X, tiene muchos
+    #exitos, pero la V.A. W solo le importa el tiempo hasta el primer exito. Despues del primer exito, se termina el experimento
+    #para la variable W. La funcion F_W_1 mejora esta intuicion, pues usa a la V.A. W en la definicion de F_W
+    #print(res_0_t)
+    return len(res_0_t) / len(res)
 
-#puedo repetir para todas las posibilidades, todos los atomos de X, esto es, el rango de X
-#Son aquellos puntos donde P(X=x) > 0
-#Es claro que 
-rg_X = [0, 1, 2, 3, 4, 5] #pues puedo obtener de 0 a 5 exitos, si extraigo 5 veces con reposicion y considero un exito sacar una bola blanca
-for x in rg_X:
-    X_x = [w for w in res if X(w) == x]
-    print(f"La proba estadistica de obtener {x} exitos es de {len(X_x) / N}, y la proba teorica es de {bin(n, x, p_e), poi(n, x, lambd, t)}")
-    
+#Puedo calcular F_W(t) con la definicion: P(W <= t) = F_W(t)
+def F_W_1(t):
+    #capturo los eventos en los que el primer exito se produjo ANTES que t
+    res_0_t = [W(w) for w in res if W(w) <= t] 
+    return len(res_0_t) / len(res)
 
-"""
-Controlando la variable tiempo en la funcion de la exponencial, deberia ser similar a 'recortar' el espacio muestral en ciertos intervalos,
-con la salvedad de que no lo puedo cortar en el 'instante' exacto, sino que en el equivalente 'floor' del intervalo en el que cae.
-"""
-#por ejemplo, puedo cortar a los resultados de los experimentos por la mitad, empezando del 0, y quedarme con los 
-#intervalos desde t = 0 h hasta t = 1/2 hora (30 minutos). Esto es equivalente a hacer slicing por w[:len(w)/2]
-res_0_30 = [w[:len(w)//2] for w in res]
-#la cantidad de intervalos se redujo a la mitad, pero no debo caer en el error de redefinir N = N/2, pues 
-#esos son la cantidad de experimentos que corri. Lo que se redujo a la mitad fue n, la cantidad de experimentos de Bernoulli que corri
-#en cada uno de mis experimentos, que siguen siendo N. Ahora tengo N observaciones de media hora, en vez de N de una hora.
-
-#si ahora fuera a calcular lo mismo que antes, pero con estos eventos 'cortados a la mitad', deberia ver algo similar a lo que la proba de la poisson
-#me indica pero para t=1/2 hora de tiempo
-rg_X = [0, 1, 2, 3, 4, 5] #pues puedo obtener de 0 a 5 exitos, si extraigo 5 veces con reposicion y considero un exito sacar una bola blanca
-print("Modificando el tiempo")
-for x in rg_X:
-    X_x = [w for w in res_0_30 if X(w) == x]
-    print(f"La proba estadistica de obtener {x} exitos es de {len(X_x) / N}, y la proba teorica es de {bin(n//2, x, p_e), poi(n/2, x, lambd, t/2)}")
-
-
-#Puedo definir la exponencial en terminos de la poisson
-#Sea T la variable aleatoria que cuenta el tiempo hasta el primer exito. Quiero calcular F_T(t) la acumulada de T.
-#F_T(t) = P(T <= t)
-#P(T <= t) = 1 - P(T > t) = 1 - P(0, long([0, t])) = 1 - P(0, t) = 1 - lambda * math.e ** (-lambda * t) 
-"""
-La cantidad de fracasos antes del primer exito sera ahora el tiempo que pasa antes del primer exito.
-
-En el caso discreto, podiamos pensarlo como 'la proba de que el primer exito ocurra en el k-esimo intento'
-Pero esto no sirve en discreto, porque es muy poco probable, por muchos N experimentos que corra, que 
-el k-esimo intervalo en donde quiero obtener mi primer exito justo sea un exito.
-
-Creo que llegue a la barrera en que ya no puedo contar eventos y calcular la proba estadisticamente como lo venia haciendo anteriormente.
-A partir de aqui, es todo calculo, y confiar en que la teoria se condiga con los resultados del mundo real.
-
-Well.. not so fast.
-Que tal cortar a la mitad todos los intervalos, y contar por exitos. Aquellos que tienen mas de 1 exito, los descarto.
-Eso me asegura de que me voy a quedar eventos cuyo primer exito VINO DESPUES de cierto tiempo t.
-No me importa exactamente cuando vino, solo que vino despues.
-Tengo que empezar a pensar en lo que pasa en 'intervalos de intervalos', no en intervalos puntuales del proceso de poisson.
-"""
-res_0_30_f = [w for w in res if sum(w[:len(w)//2]) == 0] #me quedo con los eventos donde solo tuve fracasos la primera media hora
-
-def expo(lambd, t):
-    return math.exp(-lambd * t)
-
-print(len(res_0_30_f))
-print(len(res_0_30_f)/N, expo(lambd, 1/2))
+#comparo los resultado
+print(F_W(10 * 60), F_W_1(10 * 60), F_expo(lambd, 10 * 60)) #le paso segundos a las funciones. 10 minutos * 60 seg

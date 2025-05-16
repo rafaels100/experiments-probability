@@ -53,6 +53,20 @@ def p_X(x, blancas, N, n):
     resto = n - x #son las bolitas restantes que puedo extraer despues de elegir la cantidad de blancas que quiero ver la proba de sacar
     return (comb(blancas, x) * comb(negras, resto)) / (comb(N, n))
 
+"""
+Una forma de visualizar esta funcion de probabilidad, es que en el primer combinatorio (x, blancas) se abren ciertos caminos, y en cada uno de ellos se van a abrir otros 
+caminos dados por el segundo combinatorio (y, negras).
+Al final del arbol, en las hojas, tendremos todoas las posibles formas en que pudieron haber ocurrido el evento que queremos (por ejemplo, que salga exactamente 1 
+blanca y el resto todas negras).
+Contando todos esos caminos exitosos, y dividiendo por la cantidad de caminos totales, tenemos favorables/posibles. Esto porque consideramos un espacio equiprobable,
+donde cada bolita tiene la misma probabilida de salir (no asi los colores, pero nuestro espacio muestral no consiste en colores, consiste en 7 bolitas, y 
+cada una de ellas las elegimos al azar, con la misma proba. Que despues veamos cuales son blancas, negras o rojas es otra historia).
+Seria muy distinto si nuestro espacio muestral fuera {'B', 'N'} donde P('B') = 2/7, P('N')=5/7, ahi si el espacio no seria equiprobable, pues los puntos muestrales
+en si tienen probabilidades distintas.
+En el espacio muestral que definimos, todos los puntos muestrales (cada una de las 7 bolitas) tiene la misma proba de ocurrir, no asi los eventos. 
+Por ejemplo, el evento {sacar una negra} es mas probable que el evento {sacar una blanca}, pero estamos hablando de eventos, no de puntos muestrales, por lo que es equiprobable.
+"""
+
 #Capturo los eventos en donde se extrajeron exactamente una bolita blanca, {w : omega / X(w) = 1}
 X_1 = [w for w in res if X(w) == 1]
 #print(X_1)
